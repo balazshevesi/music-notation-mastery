@@ -14,8 +14,8 @@ from build_deck import CLEFS, ROOT, create_package, musicxml
 class DeckTests(unittest.TestCase):
     def test_pitches_and_musicxml(self):
         expected = {
-            "treble": ("1", "C4 D4 E4 F4 G4 A4 B4 C5 D5 E5 F5 G5 A5".split()),
-            "bass": ("2", "E2 F2 G2 A2 B2 C3 D3 E3 F3 G3 A3 B3 C4".split()),
+            "treble": ("1", "C3 D3 E3 F3 G3 A3 B3 C4 D4 E4 F4 G4 A4 B4 C5 D5 E5 F5 G5 A5 B5 C6".split()),
+            "bass": ("2", "C1 D1 E1 F1 G1 A1 B1 C2 D2 E2 F2 G2 A2 B2 C3 D3 E3 F3 G3 A3 B3 C4 D4 E4 F4 G4 A4 B4 C5".split()),
         }
         for clef, (staff, pitches) in expected.items():
             self.assertEqual(CLEFS[clef]["pitches"], pitches)
@@ -47,7 +47,7 @@ class DeckTests(unittest.TestCase):
                 for clef, settings in CLEFS.items() for pitch in settings["pitches"]
             ]
             subprocess.run(
-                ["node", str(ROOT / "render_notes.mjs"), str(folder)],
+                ["node", str(ROOT / "renderer" / "render_notes.mjs"), str(folder)],
                 input=json.dumps(jobs), text=True, check=True,
             )
             package = create_package(folder)
@@ -64,17 +64,26 @@ class DeckTests(unittest.TestCase):
                     self.assertGreater(height, 100)
                 zip_file.extract("collection.anki2", folder)
             with sqlite3.connect(folder / "collection.anki2") as db:
-                self.assertEqual(db.execute("SELECT count(*) FROM notes").fetchone()[0], 26)
-                self.assertEqual(db.execute("SELECT count(*) FROM cards").fetchone()[0], 26)
-                self.assertEqual(db.execute("SELECT count(DISTINCT guid) FROM notes").fetchone()[0], 26)
+                self.assertEqual(db.execute("SELECT count(*) FROM notes").fetchone()[0], 51)
+                self.assertEqual(db.execute("SELECT count(*) FROM cards").fetchone()[0], 51)
+                self.assertEqual(db.execute("SELECT count(DISTINCT guid) FROM notes").fetchone()[0], 51)
                 counts = db.execute("SELECT did, count(*) FROM cards GROUP BY did").fetchall()
-                self.assertEqual(dict(counts), {settings["deck_id"]: 13 for settings in CLEFS.values()})
-                for (fields,) in db.execute("SELECT flds FROM notes"):
+                self.assertEqual(dict(counts), {1715014201: 15, 1715014202: 15, 1715014203: 7, 1715014204: 14})
+                for fields, tags, deck_id in db.execute(
+                    "SELECT notes.flds, notes.tags, cards.did FROM notes JOIN cards ON cards.nid = notes.id"
+                ):
                     key, notation, letter, pitch, clef = fields.split("\x1f")
                     self.assertIn(f'{key}.png', media.values())
                     self.assertIn(f'src="{key}.png"', notation)
                     self.assertEqual(letter, pitch[0])
                     self.assertIn(pitch, CLEFS[clef.lower()]["pitches"])
+                    core = (clef == "Treble" and int(pitch[1:]) >= 4) or (
+                        clef == "Bass" and (int(pitch[1:]) in (2, 3) or pitch == "C4")
+                    )
+                    self.assertIn("core" if core else "extended", tags.split())
+                    expected_id = {("Treble", True): 1715014201, ("Bass", True): 1715014202,
+                                   ("Treble", False): 1715014203, ("Bass", False): 1715014204}
+                    self.assertEqual(deck_id, expected_id[clef, core])
             first = [note.guid for deck in package.decks for note in deck.notes]
             second = [note.guid for deck in create_package(folder).decks for note in deck.notes]
             self.assertEqual(first, second)

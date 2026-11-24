@@ -1,4 +1,4 @@
-"""Build Part 1 with `uv run build_deck.py`."""
+"""Build Part 1 with `uv run build-deck`."""
 
 import json
 from pathlib import Path
@@ -14,12 +14,14 @@ DECK_NAME = "Music Notation Mastery::01 - Note names"
 # Keep these IDs and note GUID inputs stable across rebuilds.
 CLEFS = {
     "treble": {
-        "staff": 1, "deck_id": 1715014201,
-        "pitches": "C4 D4 E4 F4 G4 A4 B4 C5 D5 E5 F5 G5 A5".split(),
+        "staff": 1, "deck_id": 1715014201, "extended_deck_id": 1715014203,
+        "core_pitches": "C4 D4 E4 F4 G4 A4 B4 C5 D5 E5 F5 G5 A5 B5 C6".split(),
+        "pitches": "C3 D3 E3 F3 G3 A3 B3 C4 D4 E4 F4 G4 A4 B4 C5 D5 E5 F5 G5 A5 B5 C6".split(),
     },
     "bass": {
-        "staff": 2, "deck_id": 1715014202,
-        "pitches": "E2 F2 G2 A2 B2 C3 D3 E3 F3 G3 A3 B3 C4".split(),
+        "staff": 2, "deck_id": 1715014202, "extended_deck_id": 1715014204,
+        "core_pitches": "C2 D2 E2 F2 G2 A2 B2 C3 D3 E3 F3 G3 A3 B3 C4".split(),
+        "pitches": "C1 D1 E1 F1 G1 A1 B1 C2 D2 E2 F2 G2 A2 B2 C3 D3 E3 F3 G3 A3 B3 C4 D4 E4 F4 G4 A4 B4 C5".split(),
     },
 }
 MODEL = genanki.Model(
@@ -79,22 +81,26 @@ def create_package(media_dir: Path) -> genanki.Package:
     decks = []
     media = []
     for clef, settings in CLEFS.items():
-        deck = genanki.Deck(settings["deck_id"], f"{DECK_NAME}::{clef.title()} clef")
+        groups = {
+            "core": genanki.Deck(settings["deck_id"], f"{DECK_NAME}::{clef.title()} clef::Core"),
+            "extended": genanki.Deck(settings["extended_deck_id"], f"{DECK_NAME}::{clef.title()} clef::Extended"),
+        }
         for pitch in settings["pitches"]:
             key = f"mnm-note-{clef}-{pitch}"
             filename = f"{key}.png"
             image = media_dir / filename
             if not image.is_file():
                 raise FileNotFoundError(f"Missing rendered notation: {image}")
-            deck.add_note(genanki.Note(
+            group = "core" if pitch in settings["core_pitches"] else "extended"
+            groups[group].add_note(genanki.Note(
                 model=MODEL,
                 guid=genanki.guid_for("music-notation-mastery", "note-names", clef, pitch),
                 fields=[key, f'<img src="{filename}" alt="Note on a grand staff">',
                         pitch[0], pitch, clef.title()],
-                tags=["part_01", "note_names", clef],
+                tags=["part_01", "note_names", clef, group],
             ))
             media.append(str(image))
-        decks.append(deck)
+        decks.extend(groups.values())
     return genanki.Package(decks, media_files=media)
 
 
@@ -106,7 +112,7 @@ def main() -> None:
     ]
     media_dir = BUILD / "media"
     subprocess.run(
-        ["node", str(ROOT / "render_notes.mjs"), str(media_dir)],
+        ["node", str(ROOT / "renderer" / "render_notes.mjs"), str(media_dir)],
         input=json.dumps(jobs), text=True, check=True, cwd=ROOT,
     )
     destination = BUILD / "music-notation-mastery.apkg"
