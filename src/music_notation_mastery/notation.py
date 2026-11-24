@@ -67,3 +67,38 @@ def rhythm_musicxml(events: list[tuple[str, bool]], *, dotted: bool = False, tie
     <barline location="right"><bar-style>none</bar-style></barline>
   </measure></part>
 </score-partwise>"""
+
+
+def time_signature_musicxml(meter: tuple[int, int], *, grouped: bool = False) -> str:
+    """Show a numeric signature or a complete bar with explicit eighth-note beams."""
+    if meter not in ((2, 4), (3, 4), (4, 4), (6, 8)):
+        raise ValueError(f"Unsupported meter: {meter}")
+    if grouped and meter not in ((3, 4), (6, 8)):
+        raise ValueError("Grouping comparisons use 3/4 or 6/8")
+    beats, unit = meter
+    if grouped:
+        group_size = 2 if meter == (3, 4) else 3
+        notes = []
+        for index in range(6):
+            position = index % group_size
+            beam = "begin" if position == 0 else "end" if position == group_size - 1 else "continue"
+            notes.append(
+                "<note><pitch><step>C</step><octave>5</octave></pitch>"
+                f'<duration>1</duration><type>eighth</type><beam number="1">{beam}</beam></note>'
+            )
+        content = "".join(notes)
+    else:
+        content = f'<note print-object="no"><rest measure="yes"/><duration>{beats * 8 // unit}</duration></note>'
+    return f"""<?xml version="1.0" encoding="utf-8"?>
+<score-partwise version="4.0">
+  <part-list><score-part id="P1"><part-name>Meter</part-name></score-part></part-list>
+  <part id="P1"><measure number="1">
+    <attributes>
+      <divisions>2</divisions>
+      <time symbol="normal"><beats>{beats}</beats><beat-type>{unit}</beat-type></time>
+      <clef><sign>G</sign><line>2</line></clef>
+    </attributes>
+    {content}
+    <barline location="right"><bar-style>{'regular' if grouped else 'none'}</bar-style></barline>
+  </measure></part>
+</score-partwise>"""

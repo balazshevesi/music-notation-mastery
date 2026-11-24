@@ -7,8 +7,9 @@ import tempfile
 
 from .anki import create_package
 from .content.note_names import CLEFS
-from .notation import musicxml, rhythm_musicxml
+from .notation import musicxml, rhythm_musicxml, time_signature_musicxml
 from .content.rhythm import CARDS
+from .content.time_signatures import CARDS as METER_CARDS
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -26,10 +27,21 @@ def build_deck() -> None:
          "xml": rhythm_musicxml(card["events"], dotted=card.get("dotted", False), tied=card.get("tied", False))}
         for card in CARDS
     )
+    jobs.extend(
+        {"filename": f"mnm-meter-{card['id']}.png",
+         "xml": time_signature_musicxml(card["meter"], grouped=card["grouped"]),
+         "showTimeSignature": True}
+        for card in METER_CARDS
+    )
     media_dir = BUILD / "media"
     subprocess.run(
         ["node", str(ROOT / "renderer" / "render_notes.mjs"), str(media_dir)],
         input=json.dumps(jobs), text=True, check=True, cwd=ROOT,
+    )
+    subprocess.run(
+        ["node", str(ROOT / "renderer" / "render_pianos.mjs"), str(media_dir)],
+        input=json.dumps(sorted({pitch for settings in CLEFS.values() for pitch in settings["pitches"]})),
+        text=True, check=True,
     )
     destination = BUILD / "music-notation-mastery.apkg"
     # Finish writing before replacing a previously built deck.

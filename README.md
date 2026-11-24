@@ -23,7 +23,8 @@ with C3–C5 practiced in both clefs.
 
 The front shows a grand staff (treble above bass) with a single whole note on
 the staff being tested; the other staff stays empty. The answer shows the letter,
-scientific pitch name (middle C is C4), and clef. Focus on the letter first;
+scientific pitch name (middle C is C4), clef, and a piano graphic highlighting the
+exact key on an 88-key keyboard with a larger close-up. Focus on the letter first;
 the octave is included as a reference. There are no accidentals or time signatures.
 All subdecks live under `Music Notation Mastery::01 - Note names`, leaving room
 for additional parts later.
@@ -43,7 +44,19 @@ Answers explain the dot's extra half-value and how tied durations add together.
 Each card shows notation on a staff, with a written answer.
 Edit rhythm content in `src/music_notation_mastery/content/rhythm.py`.
 
-The complete package contains **71 cards**; existing note-name cards retain their IDs.
+The complete package contains **77 cards**; existing note-name cards retain their IDs.
+
+## Part 3: Time signatures
+
+6 recognition cards:
+
+- **2/4, 3/4, 4/4:** beats per bar, the quarter-note beat, and counting.
+- **6/8:** two main dotted-quarter beats, each divided into three eighth notes.
+- **3/4 versus 6/8:** six eighth notes explicitly beamed in three pairs or two
+  groups of three, with written counting guidance.
+
+Edit these cards in `src/music_notation_mastery/content/time_signatures.py`.
+These cards share the rhythm question/answer template and use separate stable IDs.
 
 ## Build
 
@@ -73,9 +86,10 @@ subdeck if needed. Reimporting a smaller deck does not remove older notes from A
 
 ```sh
 uv run python -m unittest discover -s tests -v
+node --test tests/test_pianos.mjs
 ```
 
-The checks render all 71 images and inspect the packaged database and media,
+The checks render all 77 notation images and 36 shared piano images and inspect the packaged database and media,
 including pitches, clefs, card counts, media references, and stable note IDs.
 
 ## Project structure
@@ -91,3 +105,10 @@ including pitches, clefs, card counts, media references, and stable note IDs.
 
 Run builds from this source checkout; the Python build uses the renderer beside
 `src/`. Add new lessons under `content/` as they are introduced.
+
+Piano answer graphics are generated offline by `renderer/render_pianos.mjs` using
+[piano-chart](https://github.com/ailon/piano-chart), with svgdom providing SVG layout
+and canvas producing PNGs. No runtime JavaScript or network is required in Anki.
+The note-name model appends a `Piano` field while preserving existing field order
+and note GUIDs. When reimporting, allow Anki to update the note type and templates
+if prompted so the new answer field appears.
