@@ -10,7 +10,8 @@ from zipfile import ZipFile
 from music_notation_mastery.anki import create_package
 from music_notation_mastery.build import ROOT
 from music_notation_mastery.content.note_names import CLEFS
-from music_notation_mastery.notation import musicxml
+from music_notation_mastery.notation import musicxml, rhythm_musicxml
+from music_notation_mastery.content.rhythm import CARDS
 
 
 class DeckTests(unittest.TestCase):
@@ -21,6 +22,11 @@ class DeckTests(unittest.TestCase):
                 {"filename": f"mnm-note-{clef}-{pitch}.png", "xml": musicxml(clef, pitch)}
                 for clef, settings in CLEFS.items() for pitch in settings["pitches"]
             ]
+            jobs.extend(
+                {"filename": f"mnm-rhythm-{card['id']}.png",
+                 "xml": rhythm_musicxml(card["events"], dotted=card.get("dotted", False), tied=card.get("tied", False))}
+                for card in CARDS
+            )
             subprocess.run(
                 ["node", str(ROOT / "renderer" / "render_notes.mjs"), str(folder)],
                 input=json.dumps(jobs), text=True, check=True,
@@ -31,22 +37,34 @@ class DeckTests(unittest.TestCase):
             with ZipFile(archive) as zip_file:
                 media = json.loads(zip_file.read("media"))
                 self.assertEqual(set(media.values()), {job["filename"] for job in jobs})
+                rhythm_sizes = set()
                 for entry in media:
                     png = zip_file.read(entry)
                     self.assertTrue(png.startswith(b"\x89PNG\r\n\x1a\n"))
                     width, height = struct.unpack(">II", png[16:24])
-                    self.assertGreater(width, 100)
-                    self.assertGreater(height, 100)
+                    self.assertGreater(width, 300)
+                    self.assertGreater(height, 300)
+                    if media[entry].startswith("mnm-rhythm-"):
+                        rhythm_sizes.add((width, height))
+                self.assertEqual(len(rhythm_sizes), 1)
                 zip_file.extract("collection.anki2", folder)
             with sqlite3.connect(folder / "collection.anki2") as db:
-                self.assertEqual(db.execute("SELECT count(*) FROM notes").fetchone()[0], 51)
-                self.assertEqual(db.execute("SELECT count(*) FROM cards").fetchone()[0], 51)
-                self.assertEqual(db.execute("SELECT count(DISTINCT guid) FROM notes").fetchone()[0], 51)
+                self.assertEqual(db.execute("SELECT count(*) FROM notes").fetchone()[0], 71)
+                self.assertEqual(db.execute("SELECT count(*) FROM cards").fetchone()[0], 71)
+                self.assertEqual(db.execute("SELECT count(DISTINCT guid) FROM notes").fetchone()[0], 71)
                 counts = db.execute("SELECT did, count(*) FROM cards GROUP BY did").fetchall()
-                self.assertEqual(dict(counts), {1715014201: 15, 1715014202: 15, 1715014203: 7, 1715014204: 14})
+                self.assertEqual(dict(counts), {1715014201: 15, 1715014202: 15, 1715014203: 7, 1715014204: 14, 1715014301: 10, 1715014303: 6, 1715014304: 4})
                 for fields, tags, deck_id in db.execute(
                     "SELECT notes.flds, notes.tags, cards.did FROM notes JOIN cards ON cards.nid = notes.id"
                 ):
+                    if deck_id in (1715014301, 1715014303, 1715014304):
+                        key, prompt, notation, answer = fields.split("\x1f")
+                        self.assertIn(f"{key}.png", media.values())
+                        self.assertIn(f'src="{key}.png"', notation)
+                        self.assertIn("4/4", prompt)
+                        self.assertTrue(answer)
+                        self.assertIn("rhythm", tags.split())
+                        continue
                     key, notation, letter, pitch, clef = fields.split("\x1f")
                     self.assertIn(f'{key}.png', media.values())
                     self.assertIn(f'src="{key}.png"', notation)

@@ -7,7 +7,8 @@ import tempfile
 
 from .anki import create_package
 from .content.note_names import CLEFS
-from .notation import musicxml
+from .notation import musicxml, rhythm_musicxml
+from .content.rhythm import CARDS
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -20,6 +21,11 @@ def build_deck() -> None:
         {"filename": f"mnm-note-{clef}-{pitch}.png", "xml": musicxml(clef, pitch)}
         for clef, settings in CLEFS.items() for pitch in settings["pitches"]
     ]
+    jobs.extend(
+        {"filename": f"mnm-rhythm-{card['id']}.png",
+         "xml": rhythm_musicxml(card["events"], dotted=card.get("dotted", False), tied=card.get("tied", False))}
+        for card in CARDS
+    )
     media_dir = BUILD / "media"
     subprocess.run(
         ["node", str(ROOT / "renderer" / "render_notes.mjs"), str(media_dir)],

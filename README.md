@@ -28,6 +28,23 @@ the octave is included as a reference. There are no accidentals or time signatur
 All subdecks live under `Music Notation Mastery::01 - Note names`, leaving room
 for additional parts later.
 
+## Part 2: Rhythm
+
+20 cards across three subdecks:
+
+- **Values (10):** whole, half, quarter, eighth, and sixteenth
+notes and rests.
+- **Dotted (6):** dotted half, quarter, and eighth notes and rests.
+- **Ties (4):** two notes of the same pitch joined into one held sound.
+
+Identify each duration in 4/4, where a quarter note is worth one beat.
+Answers explain the dot's extra half-value and how tied durations add together.
+
+Each card shows notation on a staff, with a written answer.
+Edit rhythm content in `src/music_notation_mastery/content/rhythm.py`.
+
+The complete package contains **71 cards**; existing note-name cards retain their IDs.
+
 ## Build
 
 Install uv and Node.js 22 or newer (with npm), then run from this directory:
@@ -35,7 +52,7 @@ Install uv and Node.js 22 or newer (with npm), then run from this directory:
 ```sh
 uv sync --locked
 npm ci --prefix renderer
-uv run build-deck
+uv run build
 ```
 
 Import `build/music-notation-mastery.apkg` in Anki using **File → Import**.
@@ -58,7 +75,7 @@ subdeck if needed. Reimporting a smaller deck does not remove older notes from A
 uv run python -m unittest discover -s tests -v
 ```
 
-The checks render all 51 images and inspect the packaged database and media,
+The checks render all 71 images and inspect the packaged database and media,
 including pitches, clefs, card counts, media references, and stable note IDs.
 
 ## Project structure
@@ -67,7 +84,7 @@ including pitches, clefs, card counts, media references, and stable note IDs.
 - `src/music_notation_mastery/notation.py`: MusicXML generation.
 - `src/music_notation_mastery/anki.py`: card templates, stable note IDs, and packaging.
 - `src/music_notation_mastery/build.py`: rendering and package build orchestration.
-- `src/music_notation_mastery/cli.py`: the `build-deck` command.
+- `src/music_notation_mastery/cli.py`: the `build` command.
 - `renderer/`: Node.js notation renderer and its dependencies.
 - `tests/`: notation and package checks.
 - `build/`: generated media and deck files (ignored by Git).

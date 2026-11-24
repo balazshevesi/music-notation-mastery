@@ -5,6 +5,7 @@ from pathlib import Path
 import genanki
 
 from .content.note_names import CLEFS, DECK_NAME
+from .content.rhythm import CARDS, DECK_IDS, DECK_NAME as RHYTHM_DECK_NAME
 
 
 MODEL = genanki.Model(
@@ -25,6 +26,19 @@ MODEL = genanki.Model(
         .letter { font-size: 48px; font-weight: bold; }
         #answer { border: 0; border-top: 1px solid #aaa; margin: 24px 0; }
     """,
+)
+
+
+RHYTHM_MODEL = genanki.Model(
+    1715014300,
+    "Music Notation Mastery - Rhythm",
+    fields=[{"name": name} for name in ("ID", "Prompt", "Notation", "Answer")],
+    templates=[{
+        "name": "Read the rhythm",
+        "qfmt": '<p>{{Prompt}}</p><div class="notation">{{Notation}}</div>',
+        "afmt": '{{FrontSide}}<hr id="answer"><p>{{Answer}}</p>',
+    }],
+    css=MODEL.css,
 )
 
 
@@ -52,6 +66,24 @@ def create_package(media_dir: Path) -> genanki.Package:
             ))
             media.append(str(image))
         decks.extend(groups.values())
+    rhythm_decks = {
+        group: genanki.Deck(deck_id, f"{RHYTHM_DECK_NAME}::{group.title()}")
+        for group, deck_id in DECK_IDS.items()
+    }
+    for card in CARDS:
+        key = f"mnm-rhythm-{card['id']}"
+        image = media_dir / f"{key}.png"
+        if not image.is_file():
+            raise FileNotFoundError(f"Missing rendered notation: {image}")
+        rhythm_decks[card["group"]].add_note(genanki.Note(
+            model=RHYTHM_MODEL,
+            guid=genanki.guid_for("music-notation-mastery", "rhythm", card["id"]),
+            fields=[key, card["prompt"],
+                    f'<img src="{image.name}" alt="Rhythm notation">', card["answer"]],
+            tags=["part_02", "rhythm", card["group"], "time_4_4"],
+        ))
+        media.append(str(image))
+    decks.extend(rhythm_decks.values())
     return genanki.Package(decks, media_files=media)
 
 
