@@ -128,7 +128,7 @@ playback preferences. Existing note GUIDs are preserved; the note type appends a
 Source: **Salamander Grand Piano V3 by Alexander Holm**, licensed under
 [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
 See `assets/audio/README.md` and `assets/audio/LICENSE.txt` for provenance and
-license details. Attribution is also included on the cards under Audio credit.
+license details. Attribution is also included in the note-name subdeck descriptions.
 Clips use velocity layer 8, are repitched by at most one semitone where needed,
 trimmed to three seconds, faded, mixed to mono, and encoded as 128 kbps MP3.
 

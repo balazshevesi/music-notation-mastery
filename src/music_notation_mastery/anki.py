@@ -13,6 +13,14 @@ from .content.note_names import CLEFS, DECK_NAME
 from .content.rhythm import CARDS, DECK_IDS, DECK_NAME as RHYTHM_DECK_NAME
 
 
+AUDIO_CREDIT = (
+    '<p>Audio: Salamander Grand Piano V3 by Alexander Holm. '
+    '<a href="https://github.com/sfzinstruments/SalamanderGrandPiano">Source</a> · '
+    '<a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>. '
+    'Trimmed, faded, converted to MP3 and repitched where needed.</p>'
+)
+
+
 MODEL = genanki.Model(
     1715014200,
     "Music Notation Mastery - Note identification",
@@ -21,11 +29,7 @@ MODEL = genanki.Model(
         "name": "Name the note",
         "qfmt": '<p>Name this note.</p><div class="notation pitch-notation">{{Notation}}</div>',
         "afmt": '{{FrontSide}}<hr id="answer"><div class="letter">{{Letter}}</div>'
-                '<p>{{Pitch}} · {{Clef}} clef</p><div>{{Sound}}</div><div class="piano">{{Piano}}</div>'
-                '<details><summary>Audio credit</summary>Salamander Grand Piano V3 — Alexander Holm. '
-                '<a href="https://github.com/sfzinstruments/SalamanderGrandPiano">Source</a> · '
-                '<a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>. '
-                'Trimmed, faded, converted to MP3 and repitched where needed.</details>',
+                '<p>{{Pitch}} · {{Clef}} clef</p><div>{{Sound}}</div><div class="piano">{{Piano}}</div>',
     }],
     css="""
         .card { font-family: Arial, sans-serif; text-align: center; font-size: 22px; }
@@ -59,8 +63,8 @@ def create_package(media_dir: Path) -> genanki.Package:
     media = []
     for clef, settings in CLEFS.items():
         groups = {
-            "core": genanki.Deck(settings["deck_id"], f"{DECK_NAME}::{clef.title()} clef::Core"),
-            "extended": genanki.Deck(settings["extended_deck_id"], f"{DECK_NAME}::{clef.title()} clef::Extended"),
+            "core": genanki.Deck(settings["deck_id"], f"{DECK_NAME}::{clef.title()} clef::Core", description=AUDIO_CREDIT),
+            "extended": genanki.Deck(settings["extended_deck_id"], f"{DECK_NAME}::{clef.title()} clef::Extended", description=AUDIO_CREDIT),
         }
         for pitch in settings["pitches"]:
             key = f"mnm-note-{clef}-{pitch}"
