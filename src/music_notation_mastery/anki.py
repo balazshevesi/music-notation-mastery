@@ -7,10 +7,7 @@ import genanki
 
 from .audio import AUDIO_DIR
 
-from .content.time_signatures import CARDS as METER_CARDS, DECK_ID as METER_DECK_ID, DECK_NAME as METER_DECK_NAME
-
-from .content.note_names import CLEFS, DECK_NAME
-from .content.rhythm import CARDS, DECK_IDS, DECK_NAME as RHYTHM_DECK_NAME
+from .content.note_names import CLEFS, DECK_ID, DECK_NAME
 
 
 AUDIO_CREDIT = (
@@ -45,27 +42,11 @@ MODEL = genanki.Model(
 )
 
 
-RHYTHM_MODEL = genanki.Model(
-    1715014300,
-    "Music Notation Mastery - Rhythm",
-    fields=[{"name": name} for name in ("ID", "Prompt", "Notation", "Answer")],
-    templates=[{
-        "name": "Read the rhythm",
-        "qfmt": '<p>{{Prompt}}</p><div class="notation">{{Notation}}</div>',
-        "afmt": '{{FrontSide}}<hr id="answer"><p>{{Answer}}</p>',
-    }],
-    css=MODEL.css,
-)
-
-
 def create_package(media_dir: Path) -> genanki.Package:
-    decks = []
+    deck = genanki.Deck(DECK_ID, DECK_NAME, description=AUDIO_CREDIT)
+    decks = [deck]
     media = []
     for clef, settings in CLEFS.items():
-        groups = {
-            "core": genanki.Deck(settings["deck_id"], f"{DECK_NAME}::{clef.title()} clef::Core", description=AUDIO_CREDIT),
-            "extended": genanki.Deck(settings["extended_deck_id"], f"{DECK_NAME}::{clef.title()} clef::Extended", description=AUDIO_CREDIT),
-        }
         for pitch in settings["pitches"]:
             key = f"mnm-note-{clef}-{pitch}"
             filename = f"{key}.png"
@@ -79,53 +60,19 @@ def create_package(media_dir: Path) -> genanki.Package:
             if not sound.is_file():
                 raise FileNotFoundError(f"Missing piano audio: {sound}")
             group = "core" if pitch in settings["core_pitches"] else "extended"
-            groups[group].add_note(genanki.Note(
+            deck.add_note(genanki.Note(
                 model=MODEL,
                 guid=genanki.guid_for("music-notation-mastery", "note-names", clef, pitch),
                 fields=[key, f'<img src="{filename}" alt="Note on a grand staff">',
                         pitch[0], pitch, clef.title(),
                         f'<img src="{piano.name}" alt="{pitch} highlighted on a piano keyboard">', f"[sound:{sound.name}]"],
-                tags=["part_01", "note_names", clef, group],
+                tags=["pitch", clef, group, f"note_{pitch[0]}", f"octave_{pitch[1:]}"],
             ))
             media.append(str(image))
             if str(piano) not in media:
                 media.append(str(piano))
             if str(sound) not in media:
                 media.append(str(sound))
-        decks.extend(groups.values())
-    rhythm_decks = {
-        group: genanki.Deck(deck_id, f"{RHYTHM_DECK_NAME}::{group.title()}")
-        for group, deck_id in DECK_IDS.items()
-    }
-    for card in CARDS:
-        key = f"mnm-rhythm-{card['id']}"
-        image = media_dir / f"{key}.png"
-        if not image.is_file():
-            raise FileNotFoundError(f"Missing rendered notation: {image}")
-        rhythm_decks[card["group"]].add_note(genanki.Note(
-            model=RHYTHM_MODEL,
-            guid=genanki.guid_for("music-notation-mastery", "rhythm", card["id"]),
-            fields=[key, card["prompt"],
-                    f'<img src="{image.name}" alt="Rhythm notation">', card["answer"]],
-            tags=["part_02", "rhythm", card["group"], "time_4_4"],
-        ))
-        media.append(str(image))
-    decks.extend(rhythm_decks.values())
-    meter_deck = genanki.Deck(METER_DECK_ID, METER_DECK_NAME)
-    for card in METER_CARDS:
-        key = f"mnm-meter-{card['id']}"
-        image = media_dir / f"{key}.png"
-        if not image.is_file():
-            raise FileNotFoundError(f"Missing rendered notation: {image}")
-        meter_deck.add_note(genanki.Note(
-            model=RHYTHM_MODEL,
-            guid=genanki.guid_for("music-notation-mastery", "time-signatures", card["id"]),
-            fields=[key, card["prompt"],
-                    f'<img src="{image.name}" alt="Time signature notation">', card["answer"]],
-            tags=["part_03", "time_signatures", f"time_{card['meter'][0]}_{card['meter'][1]}"],
-        ))
-        media.append(str(image))
-    decks.append(meter_deck)
     # A changed image must change the note field, not just the packaged file bytes.
     versioned_media = []
     replacements = {}

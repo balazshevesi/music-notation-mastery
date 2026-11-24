@@ -11,10 +11,8 @@ from zipfile import ZipFile
 
 from music_notation_mastery.anki import create_package, MODEL
 from music_notation_mastery.build import ROOT
-from music_notation_mastery.content.note_names import CLEFS
-from music_notation_mastery.notation import musicxml, rhythm_musicxml, time_signature_musicxml
-from music_notation_mastery.content.rhythm import CARDS
-from music_notation_mastery.content.time_signatures import CARDS as METER_CARDS
+from music_notation_mastery.content.note_names import CLEFS, DECK_ID, DECK_NAME
+from music_notation_mastery.notation import musicxml
 
 
 class DeckTests(unittest.TestCase):
@@ -25,17 +23,6 @@ class DeckTests(unittest.TestCase):
                 {"filename": f"mnm-note-{clef}-{pitch}.png", "xml": musicxml(clef, pitch)}
                 for clef, settings in CLEFS.items() for pitch in settings["pitches"]
             ]
-            jobs.extend(
-                {"filename": f"mnm-rhythm-{card['id']}.png",
-                 "xml": rhythm_musicxml(card["events"], dotted=card.get("dotted", False), tied=card.get("tied", False))}
-                for card in CARDS
-            )
-            jobs.extend(
-                {"filename": f"mnm-meter-{card['id']}.png",
-                 "xml": time_signature_musicxml(card["meter"], grouped=card["grouped"]),
-                 "showTimeSignature": True}
-                for card in METER_CARDS
-            )
             subprocess.run(
                 ["node", str(ROOT / "renderer" / "render_notes.mjs"), str(folder)],
                 input=json.dumps(jobs), text=True, check=True,
@@ -58,7 +45,6 @@ class DeckTests(unittest.TestCase):
                 self.assertEqual(set(media.values()), {versioned(job["filename"]) for job in jobs} |
                                  {versioned(f"mnm-piano-{pitch}.png") for settings in CLEFS.values() for pitch in settings["pitches"]} |
                                  {versioned(f"mnm-audio-{pitch}.mp3") for settings in CLEFS.values() for pitch in settings["pitches"]})
-                rhythm_sizes = set()
                 for entry in media:
                     if media[entry].endswith(".mp3"):
                         self.assertGreater(len(zip_file.read(entry)), 10000)
@@ -68,34 +54,19 @@ class DeckTests(unittest.TestCase):
                     width, height = struct.unpack(">II", png[16:24])
                     self.assertGreater(width, 300)
                     self.assertGreater(height, 300)
-                    if media[entry].startswith("mnm-rhythm-"):
-                        rhythm_sizes.add((width, height))
-                self.assertEqual(len(rhythm_sizes), 1)
                 zip_file.extract("collection.anki2", folder)
             with sqlite3.connect(folder / "collection.anki2") as db:
-                self.assertEqual(db.execute("SELECT count(*) FROM notes").fetchone()[0], 77)
-                self.assertEqual(db.execute("SELECT count(*) FROM cards").fetchone()[0], 77)
-                self.assertEqual(db.execute("SELECT count(DISTINCT guid) FROM notes").fetchone()[0], 77)
+                self.assertEqual(db.execute("SELECT count(*) FROM notes").fetchone()[0], 51)
+                self.assertEqual(db.execute("SELECT count(*) FROM cards").fetchone()[0], 51)
+                self.assertEqual(db.execute("SELECT count(DISTINCT guid) FROM notes").fetchone()[0], 51)
                 counts = db.execute("SELECT did, count(*) FROM cards GROUP BY did").fetchall()
-                self.assertEqual(dict(counts), {1715014201: 15, 1715014202: 15, 1715014203: 7, 1715014204: 14, 1715014301: 10, 1715014303: 6, 1715014304: 4, 1715014401: 6})
+                self.assertEqual(dict(counts), {DECK_ID: 51})
+                self.assertEqual(len(package.decks), 1)
+                self.assertEqual(package.decks[0].name, DECK_NAME)
+                self.assertNotIn("::", DECK_NAME)
                 for fields, tags, deck_id in db.execute(
                     "SELECT notes.flds, notes.tags, cards.did FROM notes JOIN cards ON cards.nid = notes.id"
                 ):
-                    if deck_id == 1715014401:
-                        key, prompt, notation, answer = fields.split("\x1f")
-                        self.assertIn(versioned(f"{key}.png"), media.values())
-                        self.assertIn(f'src="{versioned(f"{key}.png")}"' , notation)
-                        self.assertTrue(prompt and answer)
-                        self.assertIn("time_signatures", tags.split())
-                        continue
-                    if deck_id in (1715014301, 1715014303, 1715014304):
-                        key, prompt, notation, answer = fields.split("\x1f")
-                        self.assertIn(versioned(f"{key}.png"), media.values())
-                        self.assertIn(f'src="{versioned(f"{key}.png")}"' , notation)
-                        self.assertIn("4/4", prompt)
-                        self.assertTrue(answer)
-                        self.assertIn("rhythm", tags.split())
-                        continue
                     key, notation, letter, pitch, clef, piano, sound = fields.split("\x1f")
                     self.assertIn(versioned(f"{key}.png"), media.values())
                     self.assertIn(f'src="{versioned(f"{key}.png")}"' , notation)
@@ -108,9 +79,11 @@ class DeckTests(unittest.TestCase):
                         clef == "Bass" and (int(pitch[1:]) in (2, 3) or pitch == "C4")
                     )
                     self.assertIn("core" if core else "extended", tags.split())
-                    expected_id = {("Treble", True): 1715014201, ("Bass", True): 1715014202,
-                                   ("Treble", False): 1715014203, ("Bass", False): 1715014204}
-                    self.assertEqual(deck_id, expected_id[clef, core])
+                    self.assertEqual(set(tags.split()), {
+                        "pitch", clef.lower(), "core" if core else "extended",
+                        f"note_{letter}", f"octave_{pitch[1:]}",
+                    })
+                    self.assertEqual(deck_id, DECK_ID)
             first = [note.guid for deck in package.decks for note in deck.notes]
             second = [note.guid for deck in create_package(folder).decks for note in deck.notes]
             self.assertEqual(first, second)

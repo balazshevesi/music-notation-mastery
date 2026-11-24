@@ -5,11 +5,11 @@ An Anki deck generated with Python, managed by [uv](https://docs.astral.sh/uv/).
 renders the notation as PNGs; [genanki](https://github.com/kerrickstaley/genanki)
 bundles the cards and images into an `.apkg` file. Cards work offline.
 
-## Part 1: Note names
+## Pitch identification
 
 51 cards, one for each natural note in these ranges, including ledger lines:
 
-| Subdeck | Range | Cards |
+| Tagged group | Range | Cards |
 | --- | --- | --- |
 | Treble clef::Core | C4–C6 | 15 |
 | Bass clef::Core | C2–C4 | 15 |
@@ -17,7 +17,10 @@ bundles the cards and images into an `.apkg` file. Cards work offline.
 | Bass clef::Extended | C1–B1 and D4–C5 | 14 |
 
 Start with the 30 Core cards, then introduce the 21 Extended cards as needed.
-Cards are also tagged `core` or `extended` for filtering in Anki.
+All cards live in one deck, **Music Notation Mastery**, with no sub-decks.
+Tags let you filter by `treble` / `bass`, `core` / `extended`, note letter
+(`note_C` through `note_B`), and octave (`octave_1` through `octave_6`).
+Every note also has the `pitch` tag.
 Together these cover 36 unique natural pitches from C1 to C6 (five octaves),
 with C3–C5 practiced in both clefs.
 
@@ -27,38 +30,6 @@ scientific pitch name (middle C is C4), clef, and a piano graphic highlighting t
 exact key on an 88-key keyboard with a larger close-up. The answer also plays
 a three-second piano MP3, with Anki’s replay control. Focus on the letter first;
 the octave is included as a reference. There are no accidentals or time signatures.
-All subdecks live under `Music Notation Mastery::01 - Note names`, leaving room
-for additional parts later.
-
-## Part 2: Rhythm
-
-20 cards across three subdecks:
-
-- **Values (10):** whole, half, quarter, eighth, and sixteenth
-notes and rests.
-- **Dotted (6):** dotted half, quarter, and eighth notes and rests.
-- **Ties (4):** two notes of the same pitch joined into one held sound.
-
-Identify each duration in 4/4, where a quarter note is worth one beat.
-Answers explain the dot's extra half-value and how tied durations add together.
-
-Each card shows notation on a staff, with a written answer.
-Edit rhythm content in `src/music_notation_mastery/content/rhythm.py`.
-
-The complete package contains **77 cards**; existing note-name cards retain their IDs.
-
-## Part 3: Time signatures
-
-6 recognition cards:
-
-- **2/4, 3/4, 4/4:** beats per bar, the quarter-note beat, and counting.
-- **6/8:** two main dotted-quarter beats, each divided into three eighth notes.
-- **3/4 versus 6/8:** six eighth notes explicitly beamed in three pairs or two
-  groups of three, with written counting guidance.
-
-Edit these cards in `src/music_notation_mastery/content/time_signatures.py`.
-These cards share the rhythm question/answer template and use separate stable IDs.
-
 ## Build
 
 Install uv and Node.js 22 or newer (with npm), then run from this directory:
@@ -80,8 +51,10 @@ Deck/model IDs and note GUIDs remain stable across builds. Keep them unchanged
 when editing content so Anki can recognize existing notes on reimport. To adjust
 the ranges, edit the pitch lists in `CLEFS` in `src/music_notation_mastery/content/note_names.py` and their test
 expectations. Existing cards may retain their previous deck placement on reimport;
-use the Anki browser to move those cards into the corresponding Core or Extended
-subdeck if needed. Reimporting a smaller deck does not remove older notes from Anki.
+use the Anki browser to move existing pitch cards into **Music Notation Mastery**.
+Reimporting does not remove older notes: delete unwanted rhythm and time-signature
+notes in Anki, then delete the empty sub-decks. Old tags may also remain on reimport;
+remove obsolete `part_01` and `note_names` tags in the browser if desired.
 
 ## Check
 
@@ -90,7 +63,7 @@ uv run python -m unittest discover -s tests -v
 node --test tests/test_pianos.mjs
 ```
 
-The checks render all 77 notation images and 36 shared piano images and inspect the packaged database and media,
+The checks render all 51 notation images and 36 shared piano images and inspect the packaged database and media,
 including pitches, clefs, card counts, media references, and stable note IDs.
 
 ## Project structure
@@ -105,7 +78,7 @@ including pitches, clefs, card counts, media references, and stable note IDs.
 - `build/`: generated media and deck files (ignored by Git).
 
 Run builds from this source checkout; the Python build uses the renderer beside
-`src/`. Add new lessons under `content/` as they are introduced.
+`src/`. The scope is natural-note pitch identification only.
 
 Piano answer graphics are generated offline by `renderer/render_pianos.mjs` using
 [piano-chart](https://github.com/ailon/piano-chart), with svgdom providing SVG layout
@@ -128,7 +101,7 @@ playback preferences. Existing note GUIDs are preserved; the note type appends a
 Source: **Salamander Grand Piano V3 by Alexander Holm**, licensed under
 [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
 See `assets/audio/README.md` and `assets/audio/LICENSE.txt` for provenance and
-license details. Attribution is also included in the note-name subdeck descriptions.
+license details. Attribution is also included in the deck description.
 Clips use velocity layer 8, are repitched by at most one semitone where needed,
 trimmed to three seconds, faded, mixed to mono, and encoded as 128 kbps MP3.
 

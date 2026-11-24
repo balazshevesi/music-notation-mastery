@@ -34,12 +34,10 @@ const output = process.argv[2];
 if (!output) throw new Error("Usage: node render_notes.mjs OUTPUT_DIR < jobs.json");
 const jobs = JSON.parse(readFileSync(0, "utf8"));
 mkdirSync(output, { recursive: true });
-const rendered = [];
-for (const { filename, xml, showTimeSignature = false } of jobs) {
-  if (!/^mnm-(?:note-(?:treble|bass)-[A-G][0-9]|(?:rhythm|meter)-[a-z0-9]+(?:-[a-z0-9]+)*)\.png$/.test(filename)) {
+for (const { filename, xml } of jobs) {
+  if (!/^mnm-note-(?:treble|bass)-[A-G][0-9]\.png$/.test(filename)) {
     throw new Error(`Invalid image filename: ${filename}`);
   }
-  osmd.setOptions({ drawTimeSignatures: showTimeSignature });
   await osmd.load(xml);
   osmd.render();
   const canvas = container.querySelector("canvas");
@@ -64,7 +62,7 @@ for (const { filename, xml, showTimeSignature = false } of jobs) {
     throw new Error(`Notation touches the page boundary: ${filename}`);
   }
   const padding = 24 * resolution;
-  const verticalPadding = (filename.startsWith("mnm-note-") ? 6 : 24) * resolution;
+  const verticalPadding = 6 * resolution;
   const cropped = document.createElement("canvas");
   cropped.width = right - left + 1 + 2 * padding;
   cropped.height = bottom - top + 1 + 2 * verticalPadding;
@@ -73,29 +71,7 @@ for (const { filename, xml, showTimeSignature = false } of jobs) {
   cropContext.fillRect(0, 0, cropped.width, cropped.height);
   cropContext.drawImage(canvas, left, top, right - left + 1, bottom - top + 1,
     padding, verticalPadding, right - left + 1, bottom - top + 1);
-  rendered.push({ filename, canvas: cropped });
-}
-// Equal canvases prevent Anki's width:100% styling from magnifying shorter bars.
-const rhythms = rendered.filter(({ filename }) => filename.startsWith("mnm-rhythm-"));
-const meters = rendered.filter(({ filename }) => filename.startsWith("mnm-meter-"));
-const meterWidth = Math.max(0, ...meters.map(({ canvas }) => canvas.width));
-const meterHeight = Math.max(0, ...meters.map(({ canvas }) => canvas.height));
-const rhythmWidth = Math.max(0, ...rhythms.map(({ canvas }) => canvas.width));
-const rhythmHeight = Math.max(0, ...rhythms.map(({ canvas }) => canvas.height));
-for (const { filename, canvas } of rendered) {
-  let result = canvas;
-  if (filename.startsWith("mnm-rhythm-") || filename.startsWith("mnm-meter-")) {
-    const isMeter = filename.startsWith("mnm-meter-");
-    result = document.createElement("canvas");
-    result.width = isMeter ? meterWidth : rhythmWidth;
-    result.height = isMeter ? meterHeight : rhythmHeight;
-    const context = result.getContext("2d");
-    context.fillStyle = "white";
-    context.fillRect(0, 0, result.width, result.height);
-    context.drawImage(canvas, Math.floor((result.width - canvas.width) / 2),
-      Math.floor((result.height - canvas.height) / 2));
-  }
-  const png = result.toDataURL("image/png").split(",")[1];
+  const png = cropped.toDataURL("image/png").split(",")[1];
   writeFileSync(join(output, filename), Buffer.from(png, "base64"));
 }
 dom.window.close();
