@@ -47,7 +47,7 @@ in `renderer/render_notes.mjs` runs OpenSheetMusicDisplay using jsdom and canvas
 
 Deck/model IDs and note GUIDs remain stable across builds. Keep them unchanged
 when editing content so Anki can recognize existing notes on reimport. To adjust
-the ranges, edit the pitch lists in `CLEFS` in `build_deck.py` and their test
+the ranges, edit the pitch lists in `CLEFS` in `src/music_notation_mastery/content/note_names.py` and their test
 expectations. Existing cards may retain their previous deck placement on reimport;
 use the Anki browser to move those cards into the corresponding Core or Extended
 subdeck if needed. Reimporting a smaller deck does not remove older notes from Anki.
@@ -60,3 +60,17 @@ uv run python -m unittest discover -s tests -v
 
 The checks render all 51 images and inspect the packaged database and media,
 including pitches, clefs, card counts, media references, and stable note IDs.
+
+## Project structure
+
+- `src/music_notation_mastery/content/`: learning content; currently natural-note ranges.
+- `src/music_notation_mastery/notation.py`: MusicXML generation.
+- `src/music_notation_mastery/anki.py`: card templates, stable note IDs, and packaging.
+- `src/music_notation_mastery/build.py`: rendering and package build orchestration.
+- `src/music_notation_mastery/cli.py`: the `build-deck` command.
+- `renderer/`: Node.js notation renderer and its dependencies.
+- `tests/`: notation and package checks.
+- `build/`: generated media and deck files (ignored by Git).
+
+Run builds from this source checkout; the Python build uses the renderer beside
+`src/`. Add new lessons under `content/` as they are introduced.
