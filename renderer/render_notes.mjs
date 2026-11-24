@@ -64,14 +64,15 @@ for (const { filename, xml, showTimeSignature = false } of jobs) {
     throw new Error(`Notation touches the page boundary: ${filename}`);
   }
   const padding = 24 * resolution;
+  const verticalPadding = (filename.startsWith("mnm-note-") ? 6 : 24) * resolution;
   const cropped = document.createElement("canvas");
   cropped.width = right - left + 1 + 2 * padding;
-  cropped.height = bottom - top + 1 + 2 * padding;
+  cropped.height = bottom - top + 1 + 2 * verticalPadding;
   const cropContext = cropped.getContext("2d");
   cropContext.fillStyle = "white";
   cropContext.fillRect(0, 0, cropped.width, cropped.height);
   cropContext.drawImage(canvas, left, top, right - left + 1, bottom - top + 1,
-    padding, padding, right - left + 1, bottom - top + 1);
+    padding, verticalPadding, right - left + 1, bottom - top + 1);
   rendered.push({ filename, canvas: cropped });
 }
 // Equal canvases prevent Anki's width:100% styling from magnifying shorter bars.

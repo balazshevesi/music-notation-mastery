@@ -1,4 +1,5 @@
 import json
+from hashlib import sha256
 from pathlib import Path
 import sqlite3
 import struct
@@ -43,13 +44,18 @@ class DeckTests(unittest.TestCase):
                 input=json.dumps(sorted({pitch for settings in CLEFS.values() for pitch in settings["pitches"]})),
                 text=True, check=True,
             )
+            def versioned(name):
+                path = folder / name
+                digest = sha256(path.read_bytes()).hexdigest()[:16]
+                return f"{path.stem}-{digest}{path.suffix}"
+
             package = create_package(folder)
             archive = folder / "deck.apkg"
             package.write_to_file(str(archive))
             with ZipFile(archive) as zip_file:
                 media = json.loads(zip_file.read("media"))
-                self.assertEqual(set(media.values()), {job["filename"] for job in jobs} |
-                                 {f"mnm-piano-{pitch}.png" for settings in CLEFS.values() for pitch in settings["pitches"]})
+                self.assertEqual(set(media.values()), {versioned(job["filename"]) for job in jobs} |
+                                 {versioned(f"mnm-piano-{pitch}.png") for settings in CLEFS.values() for pitch in settings["pitches"]})
                 rhythm_sizes = set()
                 for entry in media:
                     png = zip_file.read(entry)
@@ -72,24 +78,24 @@ class DeckTests(unittest.TestCase):
                 ):
                     if deck_id == 1715014401:
                         key, prompt, notation, answer = fields.split("\x1f")
-                        self.assertIn(f"{key}.png", media.values())
-                        self.assertIn(f'src="{key}.png"', notation)
+                        self.assertIn(versioned(f"{key}.png"), media.values())
+                        self.assertIn(f'src="{versioned(f"{key}.png")}"' , notation)
                         self.assertTrue(prompt and answer)
                         self.assertIn("time_signatures", tags.split())
                         continue
                     if deck_id in (1715014301, 1715014303, 1715014304):
                         key, prompt, notation, answer = fields.split("\x1f")
-                        self.assertIn(f"{key}.png", media.values())
-                        self.assertIn(f'src="{key}.png"', notation)
+                        self.assertIn(versioned(f"{key}.png"), media.values())
+                        self.assertIn(f'src="{versioned(f"{key}.png")}"' , notation)
                         self.assertIn("4/4", prompt)
                         self.assertTrue(answer)
                         self.assertIn("rhythm", tags.split())
                         continue
                     key, notation, letter, pitch, clef, piano = fields.split("\x1f")
-                    self.assertIn(f'{key}.png', media.values())
-                    self.assertIn(f'src="{key}.png"', notation)
-                    self.assertIn(f'src="mnm-piano-{pitch}.png"', piano)
-                    self.assertIn(f"mnm-piano-{pitch}.png", media.values())
+                    self.assertIn(versioned(f"{key}.png"), media.values())
+                    self.assertIn(f'src="{versioned(f"{key}.png")}"' , notation)
+                    self.assertIn(f'src="{versioned(f"mnm-piano-{pitch}.png")}"' , piano)
+                    self.assertIn(versioned(f"mnm-piano-{pitch}.png"), media.values())
                     self.assertEqual(letter, pitch[0])
                     self.assertIn(pitch, CLEFS[clef.lower()]["pitches"])
                     core = (clef == "Treble" and int(pitch[1:]) >= 4) or (
@@ -102,6 +108,18 @@ class DeckTests(unittest.TestCase):
             first = [note.guid for deck in package.decks for note in deck.notes]
             second = [note.guid for deck in create_package(folder).decks for note in deck.notes]
             self.assertEqual(first, second)
+            before = {note.guid: list(note.fields) for deck in package.decks for note in deck.notes}
+            # Simulate revised media without changing the card's identity.
+            piano = folder / "mnm-piano-C4.png"
+            piano.write_bytes(piano.read_bytes() + b"revised")
+            updated = create_package(folder)
+            after = {note.guid: note.fields for deck in updated.decks for note in deck.notes}
+            self.assertEqual(before.keys(), after.keys())
+            changed = [guid for guid in before if before[guid] != after[guid]]
+            self.assertEqual(len(changed), 2)  # C4 appears in both clefs.
+            for guid in changed:
+                self.assertEqual(before[guid][:-1], after[guid][:-1])
+                self.assertIn(versioned("mnm-piano-C4.png"), after[guid][-1])
 
     def test_piano_is_answer_only(self):
         self.assertNotIn("{{Piano}}", MODEL.templates[0]["qfmt"])

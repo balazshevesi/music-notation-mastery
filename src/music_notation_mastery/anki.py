@@ -1,6 +1,7 @@
 """Anki model, note identifiers, and package assembly."""
 
 from pathlib import Path
+from hashlib import sha256
 
 import genanki
 
@@ -16,7 +17,7 @@ MODEL = genanki.Model(
     fields=[{"name": name} for name in ("ID", "Notation", "Letter", "Pitch", "Clef", "Piano")],
     templates=[{
         "name": "Name the note",
-        "qfmt": '<p>Name this note.</p><div class="notation">{{Notation}}</div>',
+        "qfmt": '<p>Name this note.</p><div class="notation pitch-notation">{{Notation}}</div>',
         "afmt": '{{FrontSide}}<hr id="answer"><div class="letter">{{Letter}}</div>'
                 '<p>{{Pitch}} · {{Clef}} clef</p><div class="piano">{{Piano}}</div>',
     }],
@@ -24,8 +25,9 @@ MODEL = genanki.Model(
         .card { font-family: Arial, sans-serif; text-align: center; font-size: 22px; }
         .notation { background: white; border-radius: 12px; padding: 16px;
                     max-width: 360px; margin: 24px auto; }
+        .pitch-notation { padding: 4px 16px; margin: 8px auto; }
         .notation img { width: 100%; height: auto; display: block; }
-        .piano { background: white; max-width: 600px; margin: 24px auto; }
+        .piano { background: white; max-width: 600px; margin: 12px auto; }
         .piano img { display: block; width: 100%; height: auto; }
         .letter { font-size: 48px; font-weight: bold; }
         #answer { border: 0; border-top: 1px solid #aaa; margin: 24px 0; }
@@ -109,6 +111,22 @@ def create_package(media_dir: Path) -> genanki.Package:
         ))
         media.append(str(image))
     decks.append(meter_deck)
-    return genanki.Package(decks, media_files=media)
+    # A changed image must change the note field, not just the packaged file bytes.
+    versioned_media = []
+    replacements = {}
+    for filename in media:
+        source = Path(filename)
+        data = source.read_bytes()
+        versioned = source.with_name(f"{source.stem}-{sha256(data).hexdigest()[:16]}{source.suffix}")
+        versioned.write_bytes(data)
+        replacements[f'src="{source.name}"'] = f'src="{versioned.name}"'
+        versioned_media.append(str(versioned))
+    for deck in decks:
+        for note in deck.notes:
+            for index, field in enumerate(note.fields):
+                for original, replacement in replacements.items():
+                    field = field.replace(original, replacement)
+                note.fields[index] = field
+    return genanki.Package(decks, media_files=versioned_media)
 
 

@@ -14,13 +14,13 @@ test("piano images highlight the exact key across octave boundaries", async () =
     for (const pitch of pitches) {
       const image = await loadImage(readFileSync(join(directory, `mnm-piano-${pitch}.png`)));
       assert.equal(image.width, 1200);
-      assert.equal(image.height, 620);
-      const context = createCanvas(1200, 620).getContext("2d");
+      assert.equal(image.height, 400);
+      const context = createCanvas(1200, 400).getContext("2d");
       context.drawImage(image, 0, 0);
       const target = 2 + (Number(pitch[1]) - 1) * 7 + "CDEFGAB".indexOf(pitch[0]);
       for (let key = 0; key < 52; key++) {
         const x = Math.floor(24 + (key + 0.5) * 1152 / 52);
-        const [r, g, b] = context.getImageData(x, 175, 1, 1).data;
+        const [r, g, b] = context.getImageData(x, 132, 1, 1).data;
         assert.equal(b > 180 && r < 80 && g < 150, key === target, `${pitch}: white key ${key}`);
       }
     }

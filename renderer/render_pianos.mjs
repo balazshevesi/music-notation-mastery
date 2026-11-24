@@ -39,17 +39,17 @@ async function keyboard(pitch, startOctave, startNote, endOctave, endNote, width
 for (const pitch of pitches) {
   if (!/^[A-G][1-6]$/.test(pitch)) throw new Error("Invalid piano pitch");
   const octave = Number(pitch.slice(1));
-  const canvas = createCanvas(1200, 620);
+  const canvas = createCanvas(1200, 400);
   const context = canvas.getContext("2d");
   context.fillStyle = "white";
   context.fillRect(0, 0, canvas.width, canvas.height);
   context.fillStyle = "#111827";
   context.font = "30px Arial";
   context.textAlign = "center";
-  context.fillText(`${pitch} on an 88-key piano · Middle C = C4`, 600, 42);
-  context.drawImage(await keyboard(pitch, 0, "A", 8, "C", 1152, 170), 24, 64);
-  context.fillText(`Close-up: C${octave}–C${octave + 2}`, 600, 265);
+  context.fillText(`${pitch} on an 88-key piano · Middle C = C4`, 600, 36);
+  context.drawImage(await keyboard(pitch, 0, "A", 8, "C", 1152, 170), 24, 50, 1152, 105);
+  context.fillText(`Close-up: C${octave}–C${octave + 2}`, 600, 190);
   const detail = await keyboard(pitch, octave, "C", octave + 2, "C", 720, 310);
-  context.drawImage(detail, (1200 - detail.width) / 2, 286);
+  context.drawImage(detail, 240, 204, 720, 180);
   writeFileSync(join(output, `mnm-piano-${pitch}.png`), canvas.toBuffer("image/png"));
 }

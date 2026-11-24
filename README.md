@@ -112,3 +112,7 @@ and canvas producing PNGs. No runtime JavaScript or network is required in Anki.
 The note-name model appends a `Piano` field while preserving existing field order
 and note GUIDs. When reimporting, allow Anki to update the note type and templates
 if prompted so the new answer field appears.
+
+Packaged media filenames include a hash of their contents. When an image changes,
+its filename and the note's image reference change together, allowing reimports
+to update the graphic without changing the note GUID or its learning history.
