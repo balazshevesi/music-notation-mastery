@@ -26,6 +26,12 @@ async function keyboard(pitch, startOctave, startNote, endOctave, endNote, width
   });
   try {
     instrument.create();
+    if (pitch !== "C4" && startOctave <= 4 && endOctave >= 4) {
+      instrument.keyDown("C4");
+      for (const key of container.querySelectorAll('[fill="#2563eb"]')) {
+        key.setAttribute("fill", "#e2e8f0");
+      }
+    }
     instrument.keyDown(pitch);
     const svg = container.querySelector("svg");
     if (!svg) throw new Error("Piano chart did not produce SVG");

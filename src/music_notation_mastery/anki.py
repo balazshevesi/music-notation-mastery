@@ -5,6 +5,8 @@ from hashlib import sha256
 
 import genanki
 
+from .audio import AUDIO_DIR
+
 from .content.time_signatures import CARDS as METER_CARDS, DECK_ID as METER_DECK_ID, DECK_NAME as METER_DECK_NAME
 
 from .content.note_names import CLEFS, DECK_NAME
@@ -14,12 +16,16 @@ from .content.rhythm import CARDS, DECK_IDS, DECK_NAME as RHYTHM_DECK_NAME
 MODEL = genanki.Model(
     1715014200,
     "Music Notation Mastery - Note identification",
-    fields=[{"name": name} for name in ("ID", "Notation", "Letter", "Pitch", "Clef", "Piano")],
+    fields=[{"name": name} for name in ("ID", "Notation", "Letter", "Pitch", "Clef", "Piano", "Sound")],
     templates=[{
         "name": "Name the note",
         "qfmt": '<p>Name this note.</p><div class="notation pitch-notation">{{Notation}}</div>',
         "afmt": '{{FrontSide}}<hr id="answer"><div class="letter">{{Letter}}</div>'
-                '<p>{{Pitch}} · {{Clef}} clef</p><div class="piano">{{Piano}}</div>',
+                '<p>{{Pitch}} · {{Clef}} clef</p><div>{{Sound}}</div><div class="piano">{{Piano}}</div>'
+                '<details><summary>Audio credit</summary>Salamander Grand Piano V3 — Alexander Holm. '
+                '<a href="https://github.com/sfzinstruments/SalamanderGrandPiano">Source</a> · '
+                '<a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>. '
+                'Trimmed, faded, converted to MP3 and repitched where needed.</details>',
     }],
     css="""
         .card { font-family: Arial, sans-serif; text-align: center; font-size: 22px; }
@@ -65,18 +71,23 @@ def create_package(media_dir: Path) -> genanki.Package:
             piano = media_dir / f"mnm-piano-{pitch}.png"
             if not piano.is_file():
                 raise FileNotFoundError(f"Missing piano image: {piano}")
+            sound = AUDIO_DIR / f"mnm-audio-{pitch}.mp3"
+            if not sound.is_file():
+                raise FileNotFoundError(f"Missing piano audio: {sound}")
             group = "core" if pitch in settings["core_pitches"] else "extended"
             groups[group].add_note(genanki.Note(
                 model=MODEL,
                 guid=genanki.guid_for("music-notation-mastery", "note-names", clef, pitch),
                 fields=[key, f'<img src="{filename}" alt="Note on a grand staff">',
                         pitch[0], pitch, clef.title(),
-                        f'<img src="{piano.name}" alt="{pitch} highlighted on a piano keyboard">'],
+                        f'<img src="{piano.name}" alt="{pitch} highlighted on a piano keyboard">', f"[sound:{sound.name}]"],
                 tags=["part_01", "note_names", clef, group],
             ))
             media.append(str(image))
             if str(piano) not in media:
                 media.append(str(piano))
+            if str(sound) not in media:
+                media.append(str(sound))
         decks.extend(groups.values())
     rhythm_decks = {
         group: genanki.Deck(deck_id, f"{RHYTHM_DECK_NAME}::{group.title()}")
@@ -117,9 +128,10 @@ def create_package(media_dir: Path) -> genanki.Package:
     for filename in media:
         source = Path(filename)
         data = source.read_bytes()
-        versioned = source.with_name(f"{source.stem}-{sha256(data).hexdigest()[:16]}{source.suffix}")
+        versioned = media_dir / f"{source.stem}-{sha256(data).hexdigest()[:16]}{source.suffix}"
         versioned.write_bytes(data)
         replacements[f'src="{source.name}"'] = f'src="{versioned.name}"'
+        replacements[f"[sound:{source.name}]"] = f"[sound:{versioned.name}]"
         versioned_media.append(str(versioned))
     for deck in decks:
         for note in deck.notes:

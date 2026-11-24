@@ -1,4 +1,5 @@
 import json
+from music_notation_mastery.audio import AUDIO_DIR
 from hashlib import sha256
 from pathlib import Path
 import sqlite3
@@ -45,7 +46,7 @@ class DeckTests(unittest.TestCase):
                 text=True, check=True,
             )
             def versioned(name):
-                path = folder / name
+                path = (AUDIO_DIR if name.endswith(".mp3") else folder) / name
                 digest = sha256(path.read_bytes()).hexdigest()[:16]
                 return f"{path.stem}-{digest}{path.suffix}"
 
@@ -55,9 +56,13 @@ class DeckTests(unittest.TestCase):
             with ZipFile(archive) as zip_file:
                 media = json.loads(zip_file.read("media"))
                 self.assertEqual(set(media.values()), {versioned(job["filename"]) for job in jobs} |
-                                 {versioned(f"mnm-piano-{pitch}.png") for settings in CLEFS.values() for pitch in settings["pitches"]})
+                                 {versioned(f"mnm-piano-{pitch}.png") for settings in CLEFS.values() for pitch in settings["pitches"]} |
+                                 {versioned(f"mnm-audio-{pitch}.mp3") for settings in CLEFS.values() for pitch in settings["pitches"]})
                 rhythm_sizes = set()
                 for entry in media:
+                    if media[entry].endswith(".mp3"):
+                        self.assertGreater(len(zip_file.read(entry)), 10000)
+                        continue
                     png = zip_file.read(entry)
                     self.assertTrue(png.startswith(b"\x89PNG\r\n\x1a\n"))
                     width, height = struct.unpack(">II", png[16:24])
@@ -91,11 +96,12 @@ class DeckTests(unittest.TestCase):
                         self.assertTrue(answer)
                         self.assertIn("rhythm", tags.split())
                         continue
-                    key, notation, letter, pitch, clef, piano = fields.split("\x1f")
+                    key, notation, letter, pitch, clef, piano, sound = fields.split("\x1f")
                     self.assertIn(versioned(f"{key}.png"), media.values())
                     self.assertIn(f'src="{versioned(f"{key}.png")}"' , notation)
                     self.assertIn(f'src="{versioned(f"mnm-piano-{pitch}.png")}"' , piano)
                     self.assertIn(versioned(f"mnm-piano-{pitch}.png"), media.values())
+                    self.assertEqual(sound, f'[sound:{versioned(f"mnm-audio-{pitch}.mp3")}]')
                     self.assertEqual(letter, pitch[0])
                     self.assertIn(pitch, CLEFS[clef.lower()]["pitches"])
                     core = (clef == "Treble" and int(pitch[1:]) >= 4) or (
@@ -118,10 +124,12 @@ class DeckTests(unittest.TestCase):
             changed = [guid for guid in before if before[guid] != after[guid]]
             self.assertEqual(len(changed), 2)  # C4 appears in both clefs.
             for guid in changed:
-                self.assertEqual(before[guid][:-1], after[guid][:-1])
-                self.assertIn(versioned("mnm-piano-C4.png"), after[guid][-1])
+                self.assertEqual(before[guid][:-2], after[guid][:-2])
+                self.assertIn(versioned("mnm-piano-C4.png"), after[guid][-2])
 
     def test_piano_is_answer_only(self):
+        self.assertNotIn("{{Sound}}", MODEL.templates[0]["qfmt"])
+        self.assertIn("{{Sound}}", MODEL.templates[0]["afmt"])
         self.assertNotIn("{{Piano}}", MODEL.templates[0]["qfmt"])
         self.assertIn("{{Piano}}", MODEL.templates[0]["afmt"])
 

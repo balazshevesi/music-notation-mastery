@@ -24,7 +24,8 @@ with C3–C5 practiced in both clefs.
 The front shows a grand staff (treble above bass) with a single whole note on
 the staff being tested; the other staff stays empty. The answer shows the letter,
 scientific pitch name (middle C is C4), clef, and a piano graphic highlighting the
-exact key on an 88-key keyboard with a larger close-up. Focus on the letter first;
+exact key on an 88-key keyboard with a larger close-up. The answer also plays
+a three-second piano MP3, with Anki’s replay control. Focus on the letter first;
 the octave is included as a reference. There are no accidentals or time signatures.
 All subdecks live under `Music Notation Mastery::01 - Note names`, leaving room
 for additional parts later.
@@ -116,3 +117,26 @@ if prompted so the new answer field appears.
 Packaged media filenames include a hash of their contents. When an image changes,
 its filename and the note's image reference change together, allowing reimports
 to update the graphic without changing the note GUID or its learning history.
+
+## Piano audio
+
+36 MP3 clips are bundled in `assets/audio/`, shared by the 51 note-name cards.
+Playback is on the answer side only and works offline. Audio uses Anki's normal
+playback preferences. Existing note GUIDs are preserved; the note type appends a
+`Sound` field. Allow note and note-type updates when reimporting.
+
+Source: **Salamander Grand Piano V3 by Alexander Holm**, licensed under
+[CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+See `assets/audio/README.md` and `assets/audio/LICENSE.txt` for provenance and
+license details. Attribution is also included on the cards under Audio credit.
+Clips use velocity layer 8, are repitched by at most one semitone where needed,
+trimmed to three seconds, faded, mixed to mono, and encoded as 128 kbps MP3.
+
+Normal builds use the bundled files. To regenerate them, install FFmpeg and run:
+
+```sh
+uv run python -m music_notation_mastery.audio
+```
+
+The first regeneration downloads the required original FLACs into
+`build/audio-sources/`; subsequent regenerations reuse them.
